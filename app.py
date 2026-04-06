@@ -868,11 +868,12 @@ HTML_TEMPLATE = r"""
         textarea { min-height: 80px; resize: vertical; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
         .input-group { display: flex; gap: 10px; }
+        .input-group input[type="text"] { flex: 1; min-width: 0; }
         button {
             padding: 12px 24px; border: none; border-radius: 8px;
             font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 14px;
         }
-        .btn-primary { background: #667eea; color: white; }
+        .btn-primary { background: #667eea; color: white; white-space: nowrap; }
         .btn-primary:hover { background: #5568d3; }
         .btn-success { background: #10b981; color: white; }
         .btn-danger { background: #ef4444; color: white; }
@@ -884,12 +885,12 @@ HTML_TEMPLATE = r"""
         }
         .field-header {
             display: flex; justify-content: space-between;
-            align-items: center; margin-bottom: 15px; gap: 10px;
+            align-items: flex-start; margin-bottom: 15px; gap: 10px; flex-wrap: wrap;
         }
-        .field-title { font-weight: 600; color: #1f2937; font-size: 15px; flex: 1; }
+        .field-title { font-weight: 600; color: #1f2937; font-size: 15px; flex: 1; min-width: 0; word-break: break-word; }
         .field-type-badge {
             background: #667eea; color: white; padding: 4px 12px;
-            border-radius: 12px; font-size: 11px; white-space: nowrap;
+            border-radius: 12px; font-size: 11px; white-space: nowrap; flex-shrink: 0;
         }
         .badge-grid { background: #f59e0b; }
         .badge-checkbox { background: #10b981; }
@@ -897,7 +898,7 @@ HTML_TEMPLATE = r"""
             display: flex; align-items: center; gap: 6px;
             padding: 7px 16px; border: none; border-radius: 20px;
             font-size: 12px; font-weight: 700; cursor: pointer;
-            white-space: nowrap; transition: all 0.2s;
+            white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
         }
         .btn-mode-random { background: #10b981; color: white; }
         .btn-mode-fixed  { background: #667eea; color: white; }
@@ -915,11 +916,13 @@ HTML_TEMPLATE = r"""
         .prob-row {
             display: flex; align-items: center; gap: 10px;
             padding: 8px 6px; border-radius: 7px; margin-bottom: 6px; background: #f9fafb;
+            flex-wrap: wrap;
         }
         .prob-row:hover { background: #f3f4f6; }
         .prob-label {
             flex: 1; font-size: 13px; color: #374151; font-weight: 500;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+            min-width: 80px;
         }
         .prob-levels { display: flex; gap: 5px; flex-wrap: wrap; }
         .level-btn {
@@ -938,7 +941,7 @@ HTML_TEMPLATE = r"""
         .level-alto.active  { background: #10b981; color: white; border-color: #059669; }
         .prob-actions {
             display: flex; gap: 8px; margin-top: 12px;
-            padding-top: 10px; border-top: 1px solid #e5e7eb;
+            padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;
         }
         .btn-prob-action {
             display: flex; align-items: center; gap: 6px;
@@ -951,8 +954,8 @@ HTML_TEMPLATE = r"""
         .btn-aleatorio { background: #10b981; color: white; }
         .btn-aleatorio:hover { background: #059669; }
         /* ── Grid ── */
-        .grid-preview { background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; }
-        .grid-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .grid-preview { background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; overflow-x: auto; }
+        .grid-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 300px; }
         .grid-table th, .grid-table td { padding: 8px; border: 1px solid #e5e7eb; text-align: left; }
         .grid-table th { background: #f3f4f6; font-weight: 600; }
         /* ── Progress ── */
@@ -977,8 +980,59 @@ HTML_TEMPLATE = r"""
         .log-success { border-color: #10b981; color: #6ee7b7; }
         .log-error   { border-color: #ef4444; color: #fca5a5; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .checkbox-qty { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .checkbox-qty { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .checkbox-qty input { width: 70px; }
+
+        /* ── Responsive: Tablet (≤768px) ── */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .card { padding: 20px; border-radius: 12px; }
+            h1 { font-size: 22px; }
+            h2 { font-size: 18px; }
+            .sv-watermark { font-size: 18px; top: 14px; right: 14px; }
+            .input-group { flex-direction: column; }
+            .input-group button { width: 100%; }
+            .grid-2 { grid-template-columns: 1fr; gap: 0; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-box { padding: 15px; }
+            .stat-box h3 { font-size: 26px; }
+            .fields-container { max-height: 600px; padding-right: 4px; }
+            .prob-label { max-width: 130px; }
+            .btn-prob-action { padding: 8px 12px; font-size: 12px; }
+            .logs { height: 220px; font-size: 12px; padding: 14px; }
+        }
+
+        /* ── Responsive: Móvil (≤480px) ── */
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            .card { padding: 14px; border-radius: 10px; margin-bottom: 12px; }
+            h1 { font-size: 18px; }
+            h2 { font-size: 16px; }
+            .sv-watermark { font-size: 15px; top: 10px; right: 10px; }
+            .success-badge { font-size: 11px; padding: 6px 12px; }
+            .warning { padding: 10px; font-size: 13px; }
+            label { font-size: 12px; }
+            input[type="text"], input[type="number"], input[type="date"],
+            input[type="time"], select, textarea { padding: 10px; font-size: 13px; }
+            button { padding: 10px 16px; font-size: 13px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+            .stat-box { padding: 12px 8px; border-radius: 8px; }
+            .stat-box h3 { font-size: 22px; margin-bottom: 2px; }
+            .stat-box p { font-size: 11px; }
+            .field-item { padding: 12px; }
+            .field-title { font-size: 13px; }
+            .field-type-badge { font-size: 10px; padding: 3px 8px; }
+            .btn-mode { padding: 6px 12px; font-size: 11px; }
+            .prob-container { padding: 10px; }
+            .prob-label { max-width: 90px; font-size: 12px; }
+            .level-btn { padding: 4px 7px; font-size: 10px; }
+            .prob-actions { gap: 6px; }
+            .btn-prob-action { padding: 7px 10px; font-size: 11px; flex: 1; justify-content: center; }
+            .fields-container { max-height: 500px; padding-right: 2px; }
+            .logs { height: 180px; font-size: 11px; padding: 10px; }
+            .progress-bar { height: 24px; }
+            #startBtn, #stopBtn { width: 100%; margin-bottom: 8px; }
+        }
     </style>
 </head>
 <body>
