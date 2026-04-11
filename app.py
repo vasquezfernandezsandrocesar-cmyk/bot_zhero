@@ -23,14 +23,8 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-sending_status = {
-    'is_sending': False,
-    'current': 0,
-    'total': 0,
-    'successful': 0,
-    'failed': 0,
-    'should_stop': False
-}
+sessions = {}
+statuses = {}
 
 class GoogleFormBot:
     def __init__(self, form_url):
@@ -822,8 +816,6 @@ class GoogleFormBot:
             print(f"✗ Excepción: {str(e)}")
             return False, None
 
-bot = None
-
 
 HTML_TEMPLATE = r"""
 <!DOCTYPE html>
@@ -831,7 +823,7 @@ HTML_TEMPLATE = r"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bot Google Forms</title>
+    <title>Zhero Bot</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -858,6 +850,40 @@ HTML_TEMPLATE = r"""
         .warning {
             background: #fff3cd; border-left: 4px solid #ffc107;
             padding: 15px; margin: 20px 0; border-radius: 5px; line-height: 1.6;
+        }
+        .welcome-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border-radius: 12px; padding: 18px 22px;
+            margin-bottom: 18px; text-align: center;
+        }
+        .welcome-box h2 { font-size: 20px; margin-bottom: 6px; color: white; }
+        .welcome-box p  { font-size: 13px; opacity: 0.92; margin: 0; line-height: 1.6; }
+        .help-toggle {
+            background: none; border: 2px solid #667eea; color: #667eea;
+            border-radius: 8px; padding: 8px 18px; font-size: 13px;
+            font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 4px;
+        }
+        .help-toggle:hover { background: #667eea; color: white; }
+        .help-box {
+            display: none; background: #f0f4ff; border: 2px solid #c7d2fe;
+            border-radius: 10px; padding: 18px; margin-top: 12px; line-height: 1.7;
+        }
+        .help-box h4 { color: #667eea; margin: 14px 0 5px; font-size: 13px; font-weight: 700; }
+        .help-box h4:first-child { margin-top: 0; }
+        .help-box p, .help-box li { font-size: 13px; color: #374151; margin: 3px 0; }
+        .help-box ul { padding-left: 18px; margin: 4px 0 8px; }
+        .help-box code {
+            background: #e0e7ff; color: #3730a3; padding: 2px 6px;
+            border-radius: 4px; font-size: 12px; font-family: monospace;
+        }
+        .help-disclaimer {
+            background: #fef2f2; border: 2px solid #fecaca;
+            border-radius: 8px; padding: 12px; margin-top: 14px;
+            font-size: 12px; color: #7f1d1d; line-height: 1.6;
+        }
+        .btn-cooldown {
+            background: #9ca3af !important; color: white !important;
+            cursor: not-allowed !important; opacity: 0.85;
         }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 13px; }
@@ -1039,10 +1065,55 @@ HTML_TEMPLATE = r"""
 <div class="container">
     <div class="card">
         <div class="sv-watermark">SV</div>
-        <h1>&#x1F916; Bot Google Forms</h1>
+
+        <div class="welcome-box">
+            <h2>&#x1F916; Bienvenido/a a Zhero Bot</h2>
+            <p>Tu herramienta inteligente para automatizar respuestas en Google Forms.<br>
+            Solo configura tus opciones y probabilidades, y deja que Zhero Bot haga el resto.</p>
+        </div>
+
         <div class="success-badge">&#x2705; Multi-pagina + Niveles de Probabilidad</div>
-        <div class="warning"><strong>&#x26A0;&#xFE0F; Uso Responsable:</strong> Usa solo en formularios propios.</div>
-        <div class="form-group">
+        <div class="warning"><strong>&#x26A0;&#xFE0F; Uso Responsable:</strong> Usa esta herramienta solo en formularios propios o con autorización.</div>
+
+        <button class="help-toggle" onclick="toggleHelp()">&#x2753; ¿Cómo usar Zhero Bot?</button>
+        <div class="help-box" id="helpBox">
+
+            <h4>&#x2699;&#xFE0F; Configuración previa del formulario</h4>
+            <p>Para que Zhero Bot funcione correctamente y no genere envíos fallidos, asegúrate de configurar tu Google Form así antes de usarlo:</p>
+            <ul>
+                <li>&#x274C; <strong>Desactiva</strong> la opción <em>"Recopilar direcciones de correo electrónico"</em> &rarr; selecciona <strong>No recopilar</strong></li>
+                <li>&#x274C; <strong>Desactiva</strong> la opción <em>"Limitar a 1 respuesta"</em> &rarr; déjala <strong>apagada</strong></li>
+            </ul>
+            <p>Sin estos ajustes el bot puede fallar o registrar respuestas incompletas.</p>
+
+            <h4>&#x1F4DD; Texto con múltiples valores — <code>&lt;gft&gt;</code></h4>
+            <p>En campos de texto puedes escribir varias respuestas separadas por <code>&lt;gft&gt;</code> y el bot elegirá una diferente en cada envío, haciendo las respuestas más naturales y variadas.</p>
+            <ul>
+                <li>Ejemplo: <code>Buena atención&lt;gft&gt;Excelente servicio&lt;gft&gt;Muy recomendado</code></li>
+                <li>Cada envío usará una de esas frases de forma aleatoria.</li>
+            </ul>
+
+            <h4>&#x1F3AF; Sistema de Probabilidades</h4>
+            <p>Controla con qué frecuencia se elige cada opción en campos de selección:</p>
+            <ul>
+                <li><strong>Nulo</strong> — Nunca se elige</li>
+                <li><strong>Bajo</strong> — Se elige con poca frecuencia</li>
+                <li><strong>Medio</strong> — Frecuencia normal</li>
+                <li><strong>Alto</strong> — Se elige la gran mayoría de las veces</li>
+            </ul>
+
+            <h4>&#x23F3; Cooldown entre sesiones</h4>
+            <p>Al finalizar una sesión de envíos, el botón se bloqueará automáticamente durante <strong>5 segundos</strong> antes de poder volver a usarse. Esto protege el servidor y garantiza un envío estable.</p>
+
+            <h4>&#x1F4E6; Cantidad recomendada de envíos</h4>
+            <p>Zhero Bot es capaz de realizar grandes volúmenes de envíos. Se pueden hacer hasta <strong>500 envíos</strong>, sin embargo se recomienda hacerlos en bloques de <strong>100 como máximo</strong> con un descanso entre sesiones, ya que Google Forms puede detectar actividad inusual y bloquear los envíos si se realizan todos de forma continua.</p>
+
+            <div class="help-disclaimer">
+                &#x26A0;&#xFE0F; <strong>Aviso:</strong> El vendedor de Zhero Bot no se hace responsable por bloqueos o restricciones generados por el uso de esta herramienta. El usuario asume toda la responsabilidad sobre el uso que le dé.
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top:18px;">
             <label>URL del Google Form</label>
             <div class="input-group">
                 <input type="text" id="formUrl" placeholder="https://docs.google.com/forms/d/e/...">
@@ -1096,6 +1167,7 @@ HTML_TEMPLATE = r"""
 <script>
 let fields = [];
 let statusInterval = null;
+const SESSION_ID = Math.random().toString(36).substr(2,12) + Date.now().toString(36);
 
 const TYPE_LABELS = {
     multiple_choice: 'Opcion multiple',
@@ -1356,7 +1428,7 @@ async function analyzeForm() {
         var resp = await fetch('/analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({url: url})
+            body: JSON.stringify({url: url, session_id: SESSION_ID})
         });
         var data = await resp.json();
         if (data.success) {
@@ -1389,7 +1461,7 @@ async function startSubmissions() {
         var resp = await fetch('/start', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({url: url, fields: fields, count: count, delay: delay})
+            body: JSON.stringify({url: url, fields: fields, count: count, delay: delay, session_id: SESSION_ID})
         });
         var data = await resp.json();
         if (data.success) { addLog('Iniciado', 'success'); startPolling(); }
@@ -1399,13 +1471,13 @@ async function startSubmissions() {
 
 async function stopSubmissions() {
     addLog('Deteniendo...', 'info');
-    await fetch('/stop', {method: 'POST'});
+    await fetch('/stop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({session_id: SESSION_ID})});
     stopPolling(); resetButtons();
 }
 
 function startPolling() {
     statusInterval = setInterval(async function() {
-        var resp   = await fetch('/status');
+        var resp   = await fetch('/status?session_id=' + SESSION_ID);
         var status = await resp.json();
         document.getElementById('statCurrent').textContent = status.current;
         document.getElementById('statTotal').textContent   = status.total;
@@ -1422,9 +1494,31 @@ function startPolling() {
 }
 
 function stopPolling() { if (statusInterval) { clearInterval(statusInterval); statusInterval = null; } }
+
+function toggleHelp() {
+    var box = document.getElementById('helpBox');
+    box.style.display = box.style.display === 'block' ? 'none' : 'block';
+}
+
 function resetButtons() {
-    document.getElementById('startBtn').style.display = 'inline-block';
-    document.getElementById('stopBtn').style.display  = 'none';
+    var startBtn = document.getElementById('startBtn');
+    document.getElementById('stopBtn').style.display = 'none';
+    var secs = 5;
+    startBtn.style.display = 'inline-block';
+    startBtn.disabled = true;
+    startBtn.classList.add('btn-cooldown');
+    startBtn.textContent = '⏳ Espera ' + secs + 's...';
+    var cd = setInterval(function() {
+        secs--;
+        if (secs > 0) {
+            startBtn.textContent = '⏳ Espera ' + secs + 's...';
+        } else {
+            clearInterval(cd);
+            startBtn.disabled = false;
+            startBtn.classList.remove('btn-cooldown');
+            startBtn.innerHTML = '&#x25B6;&#xFE0F; Iniciar Envios';
+        }
+    }, 1000);
 }
 </script>
 </body>
@@ -1438,77 +1532,68 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    global bot
     data = request.json
-    url = data.get('url')
-    bot = GoogleFormBot(url)
-    result = bot.analyze_form()
+    url  = data.get('url')
+    sid  = data.get('session_id', 'default')
+    b    = GoogleFormBot(url)
+    result = b.analyze_form()
+    if result.get('success'):
+        sessions[sid] = b
     return jsonify(result)
 
 @app.route('/start', methods=['POST'])
 def start():
-    global bot, sending_status
-    
-    if sending_status['is_sending']:
-        return jsonify({'success': False, 'error': 'Ya hay un proceso en ejecución'})
-    
-    data = request.json
-    url = data.get('url')
+    data   = request.json
+    sid    = data.get('session_id', 'default')
+    st     = statuses.get(sid, {})
+    if st.get('is_sending'):
+        return jsonify({'success': False, 'error': 'Ya tienes un proceso en ejecucion'})
+    url    = data.get('url')
     fields = data.get('fields', [])
-    count = data.get('count', 10)
-    delay = data.get('delay', 2.0)
-    
-    if not bot:
-        bot = GoogleFormBot(url)
-    
-    bot.fields = fields
-    
-    sending_status = {
-        'is_sending': True,
-        'current': 0,
-        'total': count,
-        'successful': 0,
-        'failed': 0,
-        'should_stop': False
+    count  = data.get('count', 10)
+    delay  = data.get('delay', 2.0)
+    if sid not in sessions:
+        sessions[sid] = GoogleFormBot(url)
+    sessions[sid].fields = fields
+    statuses[sid] = {
+        'is_sending': True, 'current': 0, 'total': count,
+        'successful': 0, 'failed': 0, 'should_stop': False
     }
-    
-    thread = threading.Thread(target=submit_worker, args=(count, delay))
+    thread = threading.Thread(target=submit_worker, args=(sid, count, delay))
     thread.daemon = True
     thread.start()
-    
     return jsonify({'success': True})
 
-def submit_worker(count, delay):
-    global bot, sending_status
-    
+def submit_worker(sid, count, delay):
     for i in range(count):
-        if sending_status['should_stop']:
+        if statuses[sid]['should_stop']:
             break
-        
-        success, data = bot.submit_form()
-        
-        sending_status['current'] = i + 1
-        
+        success, _ = sessions[sid].submit_form()
+        statuses[sid]['current'] = i + 1
         if success:
-            sending_status['successful'] += 1
+            statuses[sid]['successful'] += 1
         else:
-            sending_status['failed'] += 1
-        
+            statuses[sid]['failed'] += 1
         if i < count - 1:
             time.sleep(delay)
-    
-    sending_status['is_sending'] = False
+    statuses[sid]['is_sending'] = False
 
 @app.route('/stop', methods=['POST'])
 def stop():
-    global sending_status
-    sending_status['should_stop'] = True
-    sending_status['is_sending'] = False
+    data = request.json
+    sid  = data.get('session_id', 'default') if request.json else 'default'
+    if sid in statuses:
+        statuses[sid]['should_stop'] = True
+        statuses[sid]['is_sending']  = False
     return jsonify({'success': True})
 
 @app.route('/status', methods=['GET'])
 def status():
-    return jsonify(sending_status)
+    sid = request.args.get('session_id', 'default')
+    return jsonify(statuses.get(sid, {
+        'is_sending': False, 'current': 0, 'total': 0,
+        'successful': 0, 'failed': 0, 'should_stop': False
+    }))
 
 if __name__ == '__main__':
     print("="*60)
