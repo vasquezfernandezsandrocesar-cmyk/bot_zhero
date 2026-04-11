@@ -824,13 +824,165 @@ HTML_TEMPLATE = r"""
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zhero Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; padding: 20px;
         }
+
+        /* ══════════════════════════════════════
+           PANTALLA DE CARGA — ZHERO BOT
+        ══════════════════════════════════════ */
+        #splashScreen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #0a0a0f;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        #splashScreen.hidden {
+            opacity: 0; visibility: hidden; pointer-events: none;
+        }
+
+        /* Partículas de fondo */
+        .splash-bg {
+            position: absolute; inset: 0; overflow: hidden;
+        }
+        .particle {
+            position: absolute; border-radius: 50%;
+            background: rgba(102,126,234,0.15);
+            animation: float linear infinite;
+        }
+        @keyframes float {
+            0%   { transform: translateY(110vh) scale(0); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+
+        /* Logo central */
+        .splash-content {
+            position: relative; z-index: 2;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 0;
+        }
+
+        /* Anillo giratorio exterior */
+        .splash-ring {
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #667eea;
+            border-right-color: #764ba2;
+            animation: spin 1.5s linear infinite;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .splash-ring-2 {
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-bottom-color: #a78bfa;
+            border-left-color: #667eea;
+            animation: spin 2s linear infinite reverse;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+        /* Icono robot en el centro */
+        .splash-icon-wrap {
+            width: 160px; height: 160px;
+            position: relative; margin-bottom: 36px;
+        }
+        .splash-icon {
+            width: 100px; height: 100px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 40px rgba(102,126,234,0.5);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 30px rgba(102,126,234,0.4); }
+            50%       { box-shadow: 0 0 60px rgba(118,75,162,0.7); }
+        }
+
+        /* Nombre del bot */
+        .splash-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(38px, 8vw, 72px);
+            font-weight: 900;
+            letter-spacing: 6px;
+            background: linear-gradient(90deg, #667eea, #a78bfa, #764ba2, #667eea);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            text-align: center;
+            line-height: 1.1;
+        }
+        @keyframes shimmer {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        .splash-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(12px, 2.5vw, 15px);
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Barra de progreso */
+        .splash-progress-wrap {
+            margin-top: 52px;
+            width: clamp(220px, 55vw, 380px);
+        }
+        .splash-progress-track {
+            width: 100%; height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 99px; overflow: hidden;
+        }
+        .splash-progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #667eea, #a78bfa);
+            border-radius: 99px;
+            transition: width 0.25s ease;
+            box-shadow: 0 0 12px rgba(102,126,234,0.8);
+        }
+        .splash-status {
+            margin-top: 14px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+            min-height: 18px;
+            font-family: 'Inter', monospace;
+        }
+
+        /* Versión */
+        .splash-version {
+            position: absolute; bottom: 28px;
+            font-size: 11px; color: rgba(255,255,255,0.2);
+            letter-spacing: 2px; font-family: 'Inter', sans-serif;
+        }
+
+        /* ── Ocultar contenido principal durante la carga ── */
+        #mainContent { display: none; }
         .container { max-width: 1200px; margin: 0 auto; }
         .card {
             background: white; border-radius: 15px; padding: 30px;
@@ -850,40 +1002,6 @@ HTML_TEMPLATE = r"""
         .warning {
             background: #fff3cd; border-left: 4px solid #ffc107;
             padding: 15px; margin: 20px 0; border-radius: 5px; line-height: 1.6;
-        }
-        .welcome-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border-radius: 12px; padding: 18px 22px;
-            margin-bottom: 18px; text-align: center;
-        }
-        .welcome-box h2 { font-size: 20px; margin-bottom: 6px; color: white; }
-        .welcome-box p  { font-size: 13px; opacity: 0.92; margin: 0; line-height: 1.6; }
-        .help-toggle {
-            background: none; border: 2px solid #667eea; color: #667eea;
-            border-radius: 8px; padding: 8px 18px; font-size: 13px;
-            font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 4px;
-        }
-        .help-toggle:hover { background: #667eea; color: white; }
-        .help-box {
-            display: none; background: #f0f4ff; border: 2px solid #c7d2fe;
-            border-radius: 10px; padding: 18px; margin-top: 12px; line-height: 1.7;
-        }
-        .help-box h4 { color: #667eea; margin: 14px 0 5px; font-size: 13px; font-weight: 700; }
-        .help-box h4:first-child { margin-top: 0; }
-        .help-box p, .help-box li { font-size: 13px; color: #374151; margin: 3px 0; }
-        .help-box ul { padding-left: 18px; margin: 4px 0 8px; }
-        .help-box code {
-            background: #e0e7ff; color: #3730a3; padding: 2px 6px;
-            border-radius: 4px; font-size: 12px; font-family: monospace;
-        }
-        .help-disclaimer {
-            background: #fef2f2; border: 2px solid #fecaca;
-            border-radius: 8px; padding: 12px; margin-top: 14px;
-            font-size: 12px; color: #7f1d1d; line-height: 1.6;
-        }
-        .btn-cooldown {
-            background: #9ca3af !important; color: white !important;
-            cursor: not-allowed !important; opacity: 0.85;
         }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 13px; }
@@ -1062,54 +1180,89 @@ HTML_TEMPLATE = r"""
     </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════
+     PANTALLA DE CARGA — ZHERO BOT
+══════════════════════════════════════ -->
+<div id="splashScreen">
+    <!-- Partículas de fondo -->
+    <div class="splash-bg" id="splashBg"></div>
+
+    <!-- Contenido central -->
+    <div class="splash-content">
+        <div class="splash-icon-wrap">
+            <div class="splash-ring"></div>
+            <div class="splash-ring-2"></div>
+            <div class="splash-icon">🤖</div>
+        </div>
+
+        <div class="splash-title">ZHERO</div>
+        <div style="font-family:'Orbitron',monospace; font-size:clamp(20px,4vw,36px); font-weight:700;
+                    color:rgba(255,255,255,0.85); letter-spacing:10px; margin-top:2px; text-align:center;">
+            BOT
+        </div>
+        <div class="splash-subtitle">Google Forms Automation</div>
+
+        <div class="splash-progress-wrap">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar" id="splashBar"></div>
+            </div>
+            <div class="splash-status" id="splashStatus">Iniciando sistema...</div>
+        </div>
+    </div>
+
+    <div class="splash-version">v2.0 &nbsp;·&nbsp; by SV</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CONTENIDO PRINCIPAL
+══════════════════════════════════════ -->
+<div id="mainContent">
 <div class="container">
     <div class="card">
         <div class="sv-watermark">SV</div>
 
-        <div class="welcome-box">
-            <h2>&#x1F916; Bienvenido/a a Zhero Bot</h2>
-            <p>Tu herramienta inteligente para automatizar respuestas en Google Forms.<br>
+        <div class="welcome-box" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border-radius:12px;padding:18px 22px;margin-bottom:18px;text-align:center;">
+            <h2 style="font-size:20px;margin-bottom:6px;color:white;">&#x1F916; Bienvenido/a a Zhero Bot</h2>
+            <p style="font-size:13px;opacity:0.92;margin:0;line-height:1.6;">Tu herramienta inteligente para automatizar respuestas en Google Forms.<br>
             Solo configura tus opciones y probabilidades, y deja que Zhero Bot haga el resto.</p>
         </div>
 
         <div class="success-badge">&#x2705; Multi-pagina + Niveles de Probabilidad</div>
         <div class="warning"><strong>&#x26A0;&#xFE0F; Uso Responsable:</strong> Usa esta herramienta solo en formularios propios o con autorización.</div>
 
-        <button class="help-toggle" onclick="toggleHelp()">&#x2753; ¿Cómo usar Zhero Bot?</button>
-        <div class="help-box" id="helpBox">
-
-            <h4>&#x2699;&#xFE0F; Configuración previa del formulario</h4>
-            <p>Para que Zhero Bot funcione correctamente y no genere envíos fallidos, asegúrate de configurar tu Google Form así antes de usarlo:</p>
-            <ul>
-                <li>&#x274C; <strong>Desactiva</strong> la opción <em>"Recopilar direcciones de correo electrónico"</em> &rarr; selecciona <strong>No recopilar</strong></li>
-                <li>&#x274C; <strong>Desactiva</strong> la opción <em>"Limitar a 1 respuesta"</em> &rarr; déjala <strong>apagada</strong></li>
+        <button onclick="toggleHelp()" style="background:none;border:2px solid #667eea;color:#667eea;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:4px;">&#x2753; ¿Cómo usar Zhero Bot?</button>
+        <div id="helpBox" style="display:none;background:#f0f4ff;border:2px solid #c7d2fe;border-radius:10px;padding:18px;margin-top:12px;line-height:1.7;">
+            <h4 style="color:#667eea;margin:0 0 5px;font-size:13px;">&#x2699;&#xFE0F; Configuración previa del formulario</h4>
+            <p style="font-size:13px;color:#374151;">Para que Zhero Bot funcione correctamente, configura tu Google Form así:</p>
+            <ul style="padding-left:18px;margin:4px 0 10px;font-size:13px;color:#374151;">
+                <li>&#x274C; <strong>Desactiva</strong> "Recopilar direcciones de correo electrónico" &rarr; <strong>No recopilar</strong></li>
+                <li>&#x274C; <strong>Desactiva</strong> "Limitar a 1 respuesta" &rarr; déjala <strong>apagada</strong></li>
             </ul>
-            <p>Sin estos ajustes el bot puede fallar o registrar respuestas incompletas.</p>
-
-            <h4>&#x1F4DD; Texto con múltiples valores — <code>&lt;gft&gt;</code></h4>
-            <p>En campos de texto puedes escribir varias respuestas separadas por <code>&lt;gft&gt;</code> y el bot elegirá una diferente en cada envío, haciendo las respuestas más naturales y variadas.</p>
-            <ul>
-                <li>Ejemplo: <code>Buena atención&lt;gft&gt;Excelente servicio&lt;gft&gt;Muy recomendado</code></li>
-                <li>Cada envío usará una de esas frases de forma aleatoria.</li>
+            <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x1F4DD; Texto múltiple con <code style="background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:12px;">&lt;gft&gt;</code></h4>
+            <p style="font-size:13px;color:#374151;">Separa varias respuestas con <code style="background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:12px;">&lt;gft&gt;</code> y el bot elegirá una aleatoriamente en cada envío.</p>
+            <ul style="padding-left:18px;margin:4px 0 10px;font-size:13px;color:#374151;">
+                <li>Ejemplo: <code style="background:#e0e7ff;color:#3730a3;padding:2px 5px;border-radius:4px;font-size:11px;">Buena atención&lt;gft&gt;Excelente servicio&lt;gft&gt;Muy recomendado</code></li>
             </ul>
-
-            <h4>&#x1F3AF; Sistema de Probabilidades</h4>
-            <p>Controla con qué frecuencia se elige cada opción en campos de selección:</p>
-            <ul>
+            <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x1F3AF; Probabilidades</h4>
+            <ul style="padding-left:18px;margin:4px 0 10px;font-size:13px;color:#374151;">
                 <li><strong>Nulo</strong> — Nunca se elige</li>
-                <li><strong>Bajo</strong> — Se elige con poca frecuencia</li>
+                <li><strong>Bajo</strong> — Poca frecuencia</li>
                 <li><strong>Medio</strong> — Frecuencia normal</li>
-                <li><strong>Alto</strong> — Se elige la gran mayoría de las veces</li>
+                <li><strong>Alto</strong> — La gran mayoría de las veces</li>
             </ul>
-
-            <h4>&#x23F3; Cooldown entre sesiones</h4>
-            <p>Al finalizar una sesión de envíos, el botón se bloqueará automáticamente durante <strong>5 segundos</strong> antes de poder volver a usarse. Esto protege el servidor y garantiza un envío estable.</p>
-
-            <h4>&#x1F4E6; Cantidad recomendada de envíos</h4>
-            <p>Zhero Bot es capaz de realizar grandes volúmenes de envíos. Se pueden hacer hasta <strong>500 envíos</strong>, sin embargo se recomienda hacerlos en bloques de <strong>100 como máximo</strong> con un descanso entre sesiones, ya que Google Forms puede detectar actividad inusual y bloquear los envíos si se realizan todos de forma continua.</p>
-
-            <div class="help-disclaimer">
-                &#x26A0;&#xFE0F; <strong>Aviso:</strong> El vendedor de Zhero Bot no se hace responsable por bloqueos o restricciones generados por el uso de esta herramienta. El usuario asume toda la responsabilidad sobre el uso que le dé.
+            <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x26A1;&#xFE0F; Velocidades de envío</h4>
+            <ul style="padding-left:18px;margin:4px 0 10px;font-size:13px;color:#374151;">
+                <li>&#x1F7E2; <strong>Turbo (0.5s)</strong> — Máxima velocidad, usar con precaución</li>
+                <li>&#x1F535; <strong>Rápido (1s)</strong> — Buen equilibrio velocidad/estabilidad</li>
+                <li>&#x1F7E1; <strong>Normal (2s)</strong> — Recomendado para la mayoría de casos</li>
+                <li>&#x1F7E0; <strong>Seguro (3s)</strong> — Ideal para cantidades grandes</li>
+                <li>&#x1F534; <strong>Cauteloso (5s)</strong> — Máxima seguridad, mínimo riesgo</li>
+            </ul>
+            <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x23F3; Cooldown y cantidad recomendada</h4>
+            <p style="font-size:13px;color:#374151;">Al terminar, el botón se bloquea <strong>5 segundos</strong> automáticamente. Se pueden hacer hasta <strong>500 envíos</strong>, pero se recomienda en bloques de <strong>100 máximo</strong> con descanso entre sesiones.</p>
+            <div style="background:#fef2f2;border:2px solid #fecaca;border-radius:8px;padding:12px;margin-top:14px;font-size:12px;color:#7f1d1d;line-height:1.6;">
+                &#x26A0;&#xFE0F; <strong>Aviso:</strong> El vendedor de Zhero Bot no se hace responsable por bloqueos o restricciones generados por el uso de esta herramienta. El usuario asume toda la responsabilidad.
             </div>
         </div>
 
@@ -1126,8 +1279,14 @@ HTML_TEMPLATE = r"""
                 <input type="number" id="submissions" value="10" min="1">
             </div>
             <div class="form-group">
-                <label>Delay entre envios (segundos)</label>
-                <input type="number" id="delay" value="2" min="0.5" step="0.5">
+                <label>&#x26A1;&#xFE0F; Velocidad de envío</label>
+                <select id="delay">
+                    <option value="0.5">&#x1F7E2; Turbo — 0.5s entre envíos</option>
+                    <option value="1">&#x1F535; Rápido — 1s entre envíos</option>
+                    <option value="2" selected>&#x1F7E1; Normal — 2s entre envíos (recomendado)</option>
+                    <option value="3">&#x1F7E0; Seguro — 3s entre envíos</option>
+                    <option value="5">&#x1F534; Cauteloso — 5s entre envíos</option>
+                </select>
             </div>
         </div>
     </div>
@@ -1506,7 +1665,8 @@ function resetButtons() {
     var secs = 5;
     startBtn.style.display = 'inline-block';
     startBtn.disabled = true;
-    startBtn.classList.add('btn-cooldown');
+    startBtn.style.background = '#9ca3af';
+    startBtn.style.cursor = 'not-allowed';
     startBtn.textContent = '⏳ Espera ' + secs + 's...';
     var cd = setInterval(function() {
         secs--;
@@ -1515,12 +1675,79 @@ function resetButtons() {
         } else {
             clearInterval(cd);
             startBtn.disabled = false;
-            startBtn.classList.remove('btn-cooldown');
+            startBtn.style.background = '';
+            startBtn.style.cursor = '';
             startBtn.innerHTML = '&#x25B6;&#xFE0F; Iniciar Envios';
         }
     }, 1000);
 }
 </script>
+
+</div><!-- /mainContent -->
+
+<script>
+/* ══════════════════════════════════════
+   LÓGICA DE PANTALLA DE CARGA
+══════════════════════════════════════ */
+(function() {
+    var bar      = document.getElementById('splashBar');
+    var statusEl = document.getElementById('splashStatus');
+    var splash   = document.getElementById('splashScreen');
+    var main     = document.getElementById('mainContent');
+    var bg       = document.getElementById('splashBg');
+
+    // Generar partículas flotantes
+    for (var i = 0; i < 18; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        var size = Math.random() * 60 + 20;
+        p.style.cssText = [
+            'width:'  + size + 'px',
+            'height:' + size + 'px',
+            'left:'   + Math.random() * 100 + '%',
+            'animation-duration:' + (Math.random() * 8 + 6) + 's',
+            'animation-delay:'    + (Math.random() * 5) + 's'
+        ].join(';');
+        bg.appendChild(p);
+    }
+
+    // Pasos de carga con mensajes
+    var steps = [
+        { pct: 15, msg: 'Cargando módulos...'       },
+        { pct: 35, msg: 'Conectando con el servidor...' },
+        { pct: 55, msg: 'Preparando interfaz...'    },
+        { pct: 75, msg: 'Verificando configuración...' },
+        { pct: 90, msg: 'Casi listo...'              },
+        { pct: 100, msg: '¡Bienvenido/a!'            }
+    ];
+
+    var idx = 0;
+    var delays = [800, 900, 850, 900, 800, 900];
+
+    function nextStep() {
+        if (idx >= steps.length) {
+            // Ocultar splash y mostrar app
+            setTimeout(function() {
+                splash.classList.add('hidden');
+                main.style.display = 'block';
+                // Forzar reflow para la animación de entrada
+                main.style.opacity = '0';
+                main.style.transition = 'opacity 0.6s ease';
+                setTimeout(function() { main.style.opacity = '1'; }, 50);
+            }, 300);
+            return;
+        }
+        bar.style.width = steps[idx].pct + '%';
+        statusEl.textContent = steps[idx].msg;
+        idx++;
+        setTimeout(nextStep, delays[idx - 1] || 400);
+    }
+
+    // Arrancar después de un pequeño delay inicial
+    setTimeout(nextStep, 400);
+})();
+</script>
+
 </body>
 </html>
 
