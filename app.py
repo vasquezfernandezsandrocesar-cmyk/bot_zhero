@@ -1109,10 +1109,9 @@ HTML_TEMPLATE = r"""
         .prob-row:hover { background: #f3f4f6; }
         .prob-label {
             flex: 1; font-size: 13px; color: #374151; font-weight: 500;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
-            min-width: 80px;
+            word-break: break-word; min-width: 0;
         }
-        .prob-levels { display: flex; gap: 5px; flex-wrap: wrap; }
+        .prob-levels { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
         .level-btn {
             padding: 5px 10px; border: 2px solid transparent;
             border-radius: 20px; font-size: 11px; font-weight: 700;
@@ -1185,7 +1184,8 @@ HTML_TEMPLATE = r"""
             .stat-box { padding: 15px; }
             .stat-box h3 { font-size: 26px; }
             .fields-container { max-height: 600px; padding-right: 4px; }
-            .prob-label { max-width: 130px; }
+            .prob-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .prob-levels { flex-wrap: wrap; }
             .btn-prob-action { padding: 8px 12px; font-size: 12px; }
             .logs { height: 220px; font-size: 12px; padding: 14px; }
         }
@@ -1212,8 +1212,10 @@ HTML_TEMPLATE = r"""
             .field-type-badge { font-size: 10px; padding: 3px 8px; }
             .btn-mode { padding: 6px 12px; font-size: 11px; }
             .prob-container { padding: 10px; }
-            .prob-label { max-width: 90px; font-size: 12px; }
-            .level-btn { padding: 4px 7px; font-size: 10px; }
+            .prob-row { flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 8px; }
+            .prob-label { font-size: 12px; width: 100%; }
+            .prob-levels { flex-wrap: wrap; gap: 6px; }
+            .level-btn { padding: 5px 10px; font-size: 11px; }
             .prob-actions { gap: 6px; }
             .btn-prob-action { padding: 7px 10px; font-size: 11px; flex: 1; justify-content: center; }
             .fields-container { max-height: 500px; padding-right: 2px; }
@@ -1644,6 +1646,19 @@ async function analyzeForm() {
         var data = await resp.json();
         if (data.success) {
             fields = data.fields;
+            // Normalizar probabilidades: el backend devuelve números (20.0),
+            // el frontend usa strings ('nulo','bajo','medio','alto').
+            // Si son números → convertir todo a 'medio' por defecto.
+            fields.forEach(function(f) {
+                function normProbs(arr) {
+                    if (!arr || !arr.length) return arr;
+                    var isNumeric = arr.some(function(p) { return typeof p === 'number'; });
+                    if (isNumeric) return arr.map(function() { return 'medio'; });
+                    return arr;
+                }
+                f.probabilities     = normProbs(f.probabilities);
+                f.col_probabilities = normProbs(f.col_probabilities);
+            });
             addLog('OK: ' + data.count + ' campos detectados', 'success');
             var types = {};
             fields.forEach(function(f) { types[f.type] = (types[f.type] || 0) + 1; });
