@@ -77,51 +77,41 @@ class GoogleFormBot:
             print(f"Total entry IDs encontrados: {len(self.all_entry_ids)}")
             print(f"Entry IDs: {self.all_entry_ids[:10]}{'...' if len(self.all_entry_ids) > 10 else ''}")
             
-            # Intentar parsear FB_PUBLIC_LOAD_DATA_
-            fb_data_match = re.search(r'FB_PUBLIC_LOAD_DATA_\s*=\s*(\[.*?\]);', response.text, re.DOTALL)
-            
-            if fb_data_match:
+            # Extraer FB_PUBLIC_LOAD_DATA_ con balance de corchetes (robusto para forms grandes)
+            fb_match = re.search(r'FB_PUBLIC_LOAD_DATA_\s*=\s*(\[)', response.text)
+
+            if fb_match:
                 print("\n✓ FB_PUBLIC_LOAD_DATA_ encontrado, parseando...")
                 try:
-                    json_str = fb_data_match.group(1)
-                    form_data = json.loads(json_str)
-                    
+                    start = fb_match.start(1)
+                    depth, end = 0, start
+                    for i, ch in enumerate(response.text[start:], start):
+                        if ch == '[':   depth += 1
+                        elif ch == ']':
+                            depth -= 1
+                            if depth == 0:
+                                end = i + 1
+                                break
+                    form_data = json.loads(response.text[start:end])
+
                     if len(form_data) > 1 and form_data[1]:
-                        # Recopilar preguntas de TODAS las páginas del formulario
-                        # form_data[1][1] son las preguntas de la página 1
-                        # Páginas adicionales están en form_data[1][1] pero las secciones de página
-                        # son elementos con type==8 que contienen sub-preguntas en su estructura.
-                        # La forma correcta es recorrer TODOS los elementos del array form_data[1][1]
-                        # y también buscar en form_data[1] nivel raíz por si hay múltiples secciones.
-                        
+
                         all_questions = []
-                        
+
                         def collect_questions(node):
                             """Recursivamente extrae preguntas de cualquier nivel del árbol JSON"""
                             if not isinstance(node, list):
                                 return
-                            # Detectar nodos de salto de página (type==8): sus preguntas hijas
-                            # están en node[4][0] como lista de preguntas
-                            try:
-                                if len(node) > 3 and node[3] == 8:
-                                    # Nodo de página: buscar preguntas en sus hijos
-                                    for child in node:
-                                        if isinstance(child, list):
-                                            collect_questions(child)
-                                    return
-                            except (IndexError, TypeError):
-                                pass
                             # Si parece una pregunta válida: tiene entry_id numérico en [4][0][0]
                             try:
                                 if len(node) >= 4 and node[4] and isinstance(node[4], list) and node[4][0]:
                                     candidate_id = node[4][0][0]
-                                    # Aceptar int o string numérico
                                     if candidate_id and (isinstance(candidate_id, int) or str(candidate_id).isdigit()):
                                         all_questions.append(node)
-                                        return  # no seguir dentro de una pregunta
+                                        return  # no seguir dentro de una pregunta ya encontrada
                             except (IndexError, TypeError):
                                 pass
-                            # Recursión en hijos
+                            # Recursión en hijos (incluye nodos de página tipo 8)
                             for item in node:
                                 if isinstance(item, list):
                                     collect_questions(item)
@@ -172,7 +162,7 @@ class GoogleFormBot:
                         # Detección de campos de calificación (rating/estrellas)
                         self._detect_ratings_from_html()
                 
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ValueError, Exception):
                     return self._analyze_form_fallback(response.text)
             else:
                 return self._analyze_form_fallback(response.text)
