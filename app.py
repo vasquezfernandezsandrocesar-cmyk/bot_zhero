@@ -149,7 +149,7 @@ class GoogleFormBot:
                             
                             try:
                                 entry_id = question[4][0][0] if question[4] and question[4][0] else None
-                                question_text = str(question[1]) if len(question) > 1 else 'Campo ' + str(entry_id)
+                                question_text = self._best_label(question)
                                 question_type = question[3] if len(question) > 3 else None
                                 
                                 if not entry_id:
@@ -357,6 +357,44 @@ class GoogleFormBot:
                             print(f"    ✓ Actualizado: {len(rows)} filas x {len(cols)} cols")
                             break
     
+    def _best_label(self, q):
+        """
+        Elige el mejor texto de label para una pregunta del JSON de Google Forms.
+          q[1] = título corto (subtema/grupo)
+          q[2] = descripción completa, puede contener AMBOS separados por \\n
+                 ej: 'Error en diagnóstico\\n1. ¿Considera usted...'
+          q[4][0][3] = texto del campo individual (respaldo final)
+        Lógica:
+          1. Si q[2] contiene \\n → dividir y tomar la parte más larga
+          2. Si q[2] es más largo que q[1] → usar q[2]
+          3. Si no → usar q[1]
+          4. Respaldo final: q[4][0][3], luego 'Campo'
+        """
+        q1, q2, q4_label = '', '', ''
+        try:
+            v = str(q[1]).strip()
+            if v and v not in ('None', ''): q1 = v
+        except: pass
+        try:
+            v = str(q[2]).strip()
+            if v and v not in ('None', ''):
+                if '\n' in v:
+                    partes = [p.strip() for p in v.split('\n') if p.strip()]
+                    q2 = max(partes, key=len) if partes else v
+                else:
+                    q2 = v
+        except: pass
+        try:
+            v = str(q[4][0][3]).strip()
+            if v and v not in ('None', ''): q4_label = v
+        except: pass
+
+        if q2 and q1:
+            label = q2 if len(q2) > len(q1) else q1
+        else:
+            label = q2 or q1 or q4_label or 'Campo'
+        return label
+
     def _parse_question_json(self, question, entry_id, question_text, question_type):
         """Parsea una pregunta desde FB_PUBLIC_LOAD_DATA_"""
         
@@ -673,7 +711,13 @@ class GoogleFormBot:
         if field['type'] in ['grid', 'grid_checkbox']:
             return self._generate_grid_values(field)
         
-        return str(field['value']) if field['value'] else ''
+        # short_text / paragraph en modo random: aplicar <gft> si existe
+        value = str(field['value']) if field['value'] else ''
+        if '<gft>' in value:
+            parts = [p.strip() for p in value.split('<gft>') if p.strip()]
+            if parts:
+                value = random.choice(parts)
+        return value
     
     def _weighted_choice(self, options, probabilities):
         """Selecciona una opción basada en probabilidades"""
@@ -1253,11 +1297,15 @@ HTML_TEMPLATE = r"""
             </ul>
             <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x26A1;&#xFE0F; Velocidades de envío</h4>
             <ul style="padding-left:18px;margin:4px 0 10px;font-size:13px;color:#374151;">
-                <li>&#x1F7E2; <strong>Turbo (0.5s)</strong> — Máxima velocidad, usar con precaución</li>
+                <li>&#x26A1; <strong>Ultra Turbo (0.1s)</strong> — Velocidad extrema, solo formularios sin límite</li>
+                <li>&#x1F7E2; <strong>Mega Turbo (0.3s)</strong> — Muy rápido, usar con precaución</li>
+                <li>&#x1F7E2; <strong>Turbo (0.5s)</strong> — Máxima velocidad recomendada</li>
                 <li>&#x1F535; <strong>Rápido (1s)</strong> — Buen equilibrio velocidad/estabilidad</li>
                 <li>&#x1F7E1; <strong>Normal (2s)</strong> — Recomendado para la mayoría de casos</li>
                 <li>&#x1F7E0; <strong>Seguro (3s)</strong> — Ideal para cantidades grandes</li>
-                <li>&#x1F534; <strong>Cauteloso (5s)</strong> — Máxima seguridad, mínimo riesgo</li>
+                <li>&#x1F534; <strong>Cauteloso (5s)</strong> — Alta seguridad</li>
+                <li>&#x1F7E3; <strong>Muy Cauteloso (10s)</strong> — Para formularios con restricciones</li>
+                <li>&#x2B1B; <strong>Ultra Seguro (15s)</strong> — Mínimo riesgo de detección</li>
             </ul>
             <h4 style="color:#667eea;margin:10px 0 5px;font-size:13px;">&#x23F3; Cooldown y cantidad recomendada</h4>
             <p style="font-size:13px;color:#374151;">Al terminar, el botón se bloquea <strong>5 segundos</strong> automáticamente. Se pueden hacer hasta <strong>500 envíos</strong>, pero se recomienda en bloques de <strong>100 máximo</strong> con descanso entre sesiones.</p>
@@ -1281,11 +1329,15 @@ HTML_TEMPLATE = r"""
             <div class="form-group">
                 <label>&#x26A1;&#xFE0F; Velocidad de envío</label>
                 <select id="delay">
+                    <option value="0.1">&#x26A1; Ultra Turbo — 0.1s entre envíos</option>
+                    <option value="0.3">&#x1F7E2; Mega Turbo — 0.3s entre envíos</option>
                     <option value="0.5">&#x1F7E2; Turbo — 0.5s entre envíos</option>
                     <option value="1">&#x1F535; Rápido — 1s entre envíos</option>
                     <option value="2" selected>&#x1F7E1; Normal — 2s entre envíos (recomendado)</option>
                     <option value="3">&#x1F7E0; Seguro — 3s entre envíos</option>
                     <option value="5">&#x1F534; Cauteloso — 5s entre envíos</option>
+                    <option value="10">&#x1F7E3; Muy Cauteloso — 10s entre envíos</option>
+                    <option value="15">&#x2B1B; Ultra Seguro — 15s entre envíos</option>
                 </select>
             </div>
         </div>
